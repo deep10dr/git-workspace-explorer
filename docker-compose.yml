@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  git-workspace-explorer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: git-workspace-explorer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - WORKSPACE_DIR=/workspaces
+    volumes:
+      # Mount host directory containing local Git repositories into the container
+      # Change '/Users/deepak/Projects' to your target workspace path
+      - /Users/deepak/Projects:/workspaces:ro

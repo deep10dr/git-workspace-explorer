@@ -1,0 +1,35 @@
+# Go binaries and build artifacts
+bin/
+server
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Node/React dependencies and production builds
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.eslintcache
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
