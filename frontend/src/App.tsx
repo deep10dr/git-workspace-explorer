@@ -8,6 +8,7 @@ import { StashExplorer } from './components/StashExplorer';
 import { WorkingTree } from './components/WorkingTree';
 import { FileDiffViewer } from './components/FileDiffViewer';
 import { GlobalSearchModal } from './components/GlobalSearchModal';
+import { DiffPreviewer, DiffTab } from './components/DiffPreviewer';
 import { fetchOverview, fetchRepositories, fetchBranches, fetchCommits, fetchStashes, triggerScan } from './services/api';
 import { Repository, WorkspaceOverview, Branch, CommitSummary, Stash, SearchResult } from './types';
 import { FolderGit2, Search, AlertTriangle, ShieldCheck, FileEdit, RefreshCw, FolderPlus, ArrowLeft } from 'lucide-react';
@@ -26,6 +27,36 @@ export const App: React.FC = () => {
   const [selectedDiffFile, setSelectedDiffFile] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+
+  // Tabbed File Previews workspace states
+  const [diffTabs, setDiffTabs] = useState<DiffTab[]>([]);
+  const [activeDiffTabIndex, setActiveDiffTabIndex] = useState<number>(0);
+
+  const handleInspectFileDiff = (type: 'commit' | 'stash', ref: string, filePath: string, status: string) => {
+    if (!selectedRepo) return;
+    const existingIndex = diffTabs.findIndex(
+      (t) => t.repoId === selectedRepo.id && t.type === type && t.ref === ref && t.filePath === filePath
+    );
+
+    if (existingIndex !== -1) {
+      setActiveDiffTabIndex(existingIndex);
+    } else {
+      const newTab: DiffTab = { repoId: selectedRepo.id, type, ref, filePath, status };
+      setDiffTabs((prev) => [...prev, newTab]);
+      setActiveDiffTabIndex(diffTabs.length);
+    }
+    setCurrentTab('previews');
+  };
+
+  const handleCloseDiffTab = (index: number) => {
+    setDiffTabs((prev) => {
+      const nextTabs = prev.filter((_, i) => i !== index);
+      if (activeDiffTabIndex >= nextTabs.length) {
+        setActiveDiffTabIndex(Math.max(0, nextTabs.length - 1));
+      }
+      return nextTabs;
+    });
+  };
 
   const loadData = async () => {
     try {
@@ -110,6 +141,7 @@ export const App: React.FC = () => {
         onRefresh={handleRefresh}
         isScanning={isScanning}
         totalRepos={repositories.length}
+        openPreviewsCount={diffTabs.length}
       />
 
       {/* Main Content View */}
@@ -203,13 +235,16 @@ export const App: React.FC = () => {
           /* Level 2: Repository Detail Workspace View */
           <div>
             {currentTab === 'graph' && (
-              <CommitGraph commits={commits} repoName={selectedRepo.name} repoId={selectedRepo.id} />
+              <CommitGraph commits={commits} repoName={selectedRepo.name} repoId={selectedRepo.id} onInspectFileDiff={handleInspectFileDiff} />
             )}
             {currentTab === 'branches' && (
               <BranchExplorer branches={branches} repoName={selectedRepo.name} />
             )}
             {currentTab === 'stashes' && (
-              <StashExplorer stashes={stashes} repoName={selectedRepo.name} repoId={selectedRepo.id} />
+              <StashExplorer stashes={stashes} repoName={selectedRepo.name} repoId={selectedRepo.id} onInspectFileDiff={handleInspectFileDiff} />
+            )}
+            {currentTab === 'previews' && (
+              <DiffPreviewer tabs={diffTabs} activeTabIndex={activeDiffTabIndex} onSelectTab={setActiveDiffTabIndex} onCloseTab={handleCloseDiffTab} />
             )}
             {currentTab === 'changes' && (
               <WorkingTree status={selectedRepo.status} repoName={selectedRepo.name} onViewDiff={(path) => setSelectedDiffFile(path)} />

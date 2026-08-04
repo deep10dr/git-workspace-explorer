@@ -9,17 +9,14 @@ interface Props {
   commits: CommitSummary[];
   repoName: string;
   repoId: string;
+  onInspectFileDiff: (type: 'commit', ref: string, filePath: string, status: string) => void;
 }
 
-export const CommitGraph: React.FC<Props> = ({ commits, repoName, repoId }) => {
+export const CommitGraph: React.FC<Props> = ({ commits, repoName, repoId, onInspectFileDiff }) => {
   const [filter, setFilter] = useState('');
   const [selectedCommit, setSelectedCommit] = useState<CommitSummary | null>(commits[0] || null);
   const [commitFiles, setCommitFiles] = useState<{ path: string; status: string }[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
-
-  const [activeDiffFile, setActiveDiffFile] = useState<string | null>(null);
-  const [activeDiffText, setActiveDiffText] = useState<string>('');
-  const [loadingDiff, setLoadingDiff] = useState(false);
 
   // React Flow state hooks for draggable nodes
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
@@ -29,7 +26,6 @@ export const CommitGraph: React.FC<Props> = ({ commits, repoName, repoId }) => {
   useEffect(() => {
     if (selectedCommit) {
       setLoadingFiles(true);
-      setActiveDiffFile(null);
       fetchCommitFiles(repoId, selectedCommit.sha)
         .then((files) => {
           setCommitFiles(files || []);
@@ -41,21 +37,6 @@ export const CommitGraph: React.FC<Props> = ({ commits, repoName, repoId }) => {
         });
     }
   }, [selectedCommit, repoId]);
-
-  const handleInspectFileDiff = (filePath: string) => {
-    if (!selectedCommit) return;
-    setActiveDiffFile(filePath);
-    setLoadingDiff(true);
-    fetchCommitFileDiff(repoId, selectedCommit.sha, filePath)
-      .then((res) => {
-        setActiveDiffText(res.diff);
-        setLoadingDiff(false);
-      })
-      .catch(() => {
-        setActiveDiffText('Error fetching diff text.');
-        setLoadingDiff(false);
-      });
-  };
 
   const filteredCommits = useMemo(() => {
     return commits.filter(
@@ -289,17 +270,18 @@ export const CommitGraph: React.FC<Props> = ({ commits, repoName, repoId }) => {
               commitFiles.map((file, idx) => (
                 <div
                   key={idx}
-                  onClick={() => handleInspectFileDiff(file.path)}
+                  onClick={() => onInspectFileDiff('commit', selectedCommit.sha, file.path, file.status)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '8px 10px',
-                    background: activeDiffFile === file.path ? 'var(--sidebar-active-bg)' : 'var(--bg-tertiary)',
-                    border: activeDiffFile === file.path ? `1px solid var(--sidebar-active-border)` : '1px solid var(--border-color)',
+                    background: 'var(--bg-tertiary)',
+                    border: '1px solid var(--border-color)',
                     borderRadius: '6px',
                     cursor: 'pointer',
                   }}
+                  className="btn-secondary-hover"
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
                     <FileCode size={14} color="var(--accent-secondary)" />
@@ -312,73 +294,6 @@ export const CommitGraph: React.FC<Props> = ({ commits, repoName, repoId }) => {
               ))
             )}
           </div>
-
-          {/* Diff Viewer Panel */}
-          {activeDiffFile && (
-            <div style={{ background: 'var(--bg-primary)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', maxHeight: '250px', overflow: 'auto' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px' }}>
-                <span style={{ color: 'var(--accent-secondary)', fontWeight: 600, fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{activeDiffFile}</span>
-                <button onClick={() => setActiveDiffFile(null)} className="btn-secondary" style={{ padding: '2px 4px' }}>
-                  <X size={12} />
-                </button>
-              </div>
-              {loadingDiff ? (
-                <div style={{ color: 'var(--text-subtle)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>Loading file diff...</div>
-              ) : (
-                activeDiffText.split('\n').map((line, lIdx) => {
-                  let bg = 'transparent';
-                  let color = 'var(--text-main)';
-                  let symbol = ' ';
-
-                  if (line.startsWith('+') && !line.startsWith('+++')) {
-                    bg = 'rgba(16, 185, 129, 0.08)';
-                    color = 'var(--accent-emerald)';
-                    symbol = '+';
-                  } else if (line.startsWith('-') && !line.startsWith('---')) {
-                    bg = 'rgba(244, 63, 94, 0.08)';
-                    color = 'var(--accent-rose)';
-                    symbol = '-';
-                  } else if (line.startsWith('@@')) {
-                    bg = 'rgba(99, 102, 241, 0.06)';
-                    color = 'var(--accent-primary)';
-                    symbol = '@';
-                  } else if (line.startsWith('+++') || line.startsWith('---') || line.startsWith('diff') || line.startsWith('index')) {
-                    bg = 'rgba(100, 116, 139, 0.04)';
-                    color = 'var(--text-subtle)';
-                    symbol = 'i';
-                  }
-
-                  const codeText = (line.startsWith('+') || line.startsWith('-') || line.startsWith(' ')) ? line.substring(1) : line;
-
-                  return (
-                    <div
-                      key={lIdx}
-                      style={{
-                        display: 'flex',
-                        background: bg,
-                        color: color,
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: '0.78rem',
-                        lineHeight: '1.4',
-                        padding: '1px 0',
-                        borderLeft: symbol === '+' ? '3px solid var(--accent-emerald)' : symbol === '-' ? '3px solid var(--accent-rose)' : '3px solid transparent',
-                      }}
-                    >
-                      <span style={{ width: '30px', textAlign: 'right', paddingRight: '6px', color: 'var(--text-subtle)', userSelect: 'none', borderRight: '1px solid var(--border-color)', fontSize: '0.7rem' }}>
-                        {lIdx + 1}
-                      </span>
-                      <span style={{ width: '16px', textAlign: 'center', userSelect: 'none', fontWeight: 'bold', fontSize: '0.7rem' }}>
-                        {symbol !== ' ' && symbol !== 'i' ? symbol : ''}
-                      </span>
-                      <pre style={{ margin: 0, paddingLeft: '4px', whiteSpace: 'pre-wrap', wordBreak: 'break-all', flex: 1, fontFamily: 'var(--font-mono)' }}>
-                        {codeText}
-                      </pre>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          )}
         </div>
       )}
     </div>

@@ -24,6 +24,7 @@ interface SidebarProps {
   onRefresh: () => void;
   isScanning: boolean;
   totalRepos: number;
+  openPreviewsCount: number;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -35,6 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onRefresh,
   isScanning,
   totalRepos,
+  openPreviewsCount,
 }) => {
   const globalMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: HomeIcon },
@@ -47,6 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'graph', label: 'Commit Graph', icon: GitCommit },
         { id: 'branches', label: 'Branch Graph', icon: GitBranch },
         { id: 'stashes', label: 'Stashes', icon: ArchiveBoxIcon, count: selectedRepo.stashCount },
+        ...(openPreviewsCount > 0 ? [{ id: 'previews', label: 'File Previews', icon: DocumentTextIcon, count: openPreviewsCount }] : []),
         { id: 'changes', label: 'Working Tree', icon: DocumentTextIcon, count: selectedRepo.status.isClean ? undefined : selectedRepo.status.totalChanges },
         { id: 'health', label: 'Health', icon: HeartIcon },
       ]
