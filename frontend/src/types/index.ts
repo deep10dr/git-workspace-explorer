@@ -97,3 +97,10 @@ export interface SearchResult {
   ref: string;
   snippet: string;
 }
+
+export interface VerifyResult {
+  name: string;
+  status: 'success' | 'failure' | 'skipped';
+  message: string;
+  output: string;
+}

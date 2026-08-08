@@ -130,7 +130,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
+    <div  className="flex h-100vh w-full overflow-hidden">
       {/* Sidebar Navigation */}
       <Sidebar
         currentTab={currentTab}

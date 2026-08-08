@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -175,6 +176,14 @@ func (s *Server) handleRepositoryDetail(w http.ResponseWriter, r *http.Request) 
 					}
 					jsonResponse(w, map[string]string{"path": filePath, "diff": diffText})
 					return
+				} else if len(parts) == 6 && parts[5] == "verify" {
+					results, err := s.verifyCommit(repoPath, commitSHA)
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+					jsonResponse(w, results)
+					return
 				}
 			}
 
@@ -261,4 +270,157 @@ func GetAbsPath(path string) string {
 		return path
 	}
 	return abs
+}
+
+type VerifyResult struct {
+	Name    string `json:"name"`
+	Status  string `json:"status"` // "success", "failure", "skipped"
+	Message string `json:"message"`
+	Output  string `json:"output"`
+}
+
+func (s *Server) verifyCommit(repoPath, sha string) ([]VerifyResult, error) {
+	// 1. Get current branch/commit ref
+	currBranchCmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+	currBranchCmd.Dir = repoPath
+	origBranchBytes, err := currBranchCmd.Output()
+	origBranch := strings.TrimSpace(string(origBranchBytes))
+	if err != nil || origBranch == "" {
+		origBranch = "main" // default
+	}
+
+	// 2. Check if working tree is dirty
+	statusCmd := exec.Command("git", "status", "--porcelain")
+	statusCmd.Dir = repoPath
+	statusOut, _ := statusCmd.Output()
+	isDirty := len(strings.TrimSpace(string(statusOut))) > 0
+
+	// 3. Stash changes if dirty
+	if isDirty {
+		// Temporary stash
+		exec.Command("git", "stash", "--include-untracked").Run( )
+	}
+
+	// 4. Checkout selected commit SHA
+	exec.Command("git", "checkout", sha).Run()
+
+	// Defer branch restoration and popping stash
+	defer func() {
+		exec.Command("git", "checkout", origBranch).Run()
+		if isDirty {
+			exec.Command("git", "stash", "pop").Run()
+		}
+	}()
+
+	var results []VerifyResult
+
+	// 5. Discover project types & run verification checks
+	hasGo := fileExists(filepath.Join(repoPath, "go.mod"))
+	hasNode := fileExists(filepath.Join(repoPath, "package.json"))
+
+	if hasGo {
+		// Go Vet linter check
+		vetCmd := exec.Command("go", "vet", "./...")
+		vetCmd.Dir = repoPath
+		vetOut, vetErr := vetCmd.CombinedOutput()
+		vetStatus := "success"
+		if vetErr != nil {
+			vetStatus = "failure"
+		}
+		results = append(results, VerifyResult{
+			Name:    "Go Vet (Linter)",
+			Status:  vetStatus,
+			Message: "Static analysis of Go syntax and correctness",
+			Output:  string(vetOut),
+		})
+
+		// Go Unit Tests check
+		testCmd := exec.Command("go", "test", "./...")
+		testCmd.Dir = repoPath
+		testOut, testErr := testCmd.CombinedOutput()
+		testStatus := "success"
+		if testErr != nil {
+			testStatus = "failure"
+		}
+		results = append(results, VerifyResult{
+			Name:    "Go Unit Tests",
+			Status:  testStatus,
+			Message: "Automated unit tests execution",
+			Output:  string(testOut),
+		})
+	}
+
+	if hasNode {
+		// Node Lint check
+		var lintCmd *exec.Cmd
+		packageJSONPath := filepath.Join(repoPath, "package.json")
+		if containsNPMScript(packageJSONPath, "lint") {
+			lintCmd = exec.Command("npm", "run", "lint")
+		} else {
+			lintCmd = exec.Command("npx", "tsc", "--noEmit")
+		}
+		lintCmd.Dir = repoPath
+		lintOut, lintErr := lintCmd.CombinedOutput()
+		lintStatus := "success"
+		if lintErr != nil {
+			lintStatus = "failure"
+		}
+		results = append(results, VerifyResult{
+			Name:    "TypeScript/JavaScript Lint",
+			Status:  lintStatus,
+			Message: "Typechecks and code quality checks",
+			Output:  string(lintOut),
+		})
+
+		// Node Test check
+		if containsNPMScript(packageJSONPath, "test") {
+			nodeTestCmd := exec.Command("npm", "run", "test")
+			nodeTestCmd.Dir = repoPath
+			nodeTestOut, nodeTestErr := nodeTestCmd.CombinedOutput()
+			nodeTestStatus := "success"
+			if nodeTestErr != nil {
+				nodeTestStatus = "failure"
+			}
+			results = append(results, VerifyResult{
+				Name:    "Node Unit Tests",
+				Status:  nodeTestStatus,
+				Message: "Frontend code tests suite",
+				Output:  string(nodeTestOut),
+			})
+		}
+	}
+
+	if !hasGo && !hasNode {
+		results = append(results, VerifyResult{
+			Name:    "Generic Build Check",
+			Status:  "skipped",
+			Message: "No supported package managers found (go.mod or package.json missing)",
+			Output:  "Skipped verification.",
+		})
+	}
+
+	return results, nil
+}
+
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}
+
+func containsNPMScript(packageJSONPath, scriptName string) bool {
+	bytes, err := os.ReadFile(packageJSONPath)
+	if err != nil {
+		return false
+	}
+	var data struct {
+		Scripts map[string]string `json:"scripts"`
+	}
+	if err := json.Unmarshal(bytes, &data); err != nil {
+		return false
+	}
+	_, ok := data.Scripts[scriptName]
+	return ok
 }

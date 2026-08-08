@@ -1,8 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { CommitSummary } from '../types';
-import { fetchCommitFiles, fetchCommitFileDiff } from '../services/api';
+import { CommitSummary, VerifyResult } from '../types';
+import { fetchCommitFiles, verifyCommit } from '../services/api';
 import { ReactFlow, Background, Controls, Node, Edge, Position, MarkerType, useNodesState, useEdgesState } from '@xyflow/react';
-import { User, Calendar, Tag, Search, FileCode, X } from 'lucide-react';
+import { 
+  PlayIcon, 
+  CheckCircleIcon, 
+  XCircleIcon, 
+  ExclamationTriangleIcon,
+  ChevronDownIcon,
+  ChevronUpIcon
+} from '@heroicons/react/24/outline';
+import { Search, FileCode, X } from 'lucide-react';
 import '@xyflow/react/dist/style.css';
 
 interface Props {
@@ -18,6 +26,11 @@ export const CommitGraph: React.FC<Props> = ({ commits, repoName, repoId, onInsp
   const [commitFiles, setCommitFiles] = useState<{ path: string; status: string }[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
 
+  // Verification states
+  const [verifying, setVerifying] = useState(false);
+  const [verifyResults, setVerifyResults] = useState<VerifyResult[] | null>(null);
+  const [expandedCheckName, setExpandedCheckName] = useState<string | null>(null);
+
   // React Flow state hooks for draggable nodes
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -26,6 +39,8 @@ export const CommitGraph: React.FC<Props> = ({ commits, repoName, repoId, onInsp
   useEffect(() => {
     if (selectedCommit) {
       setLoadingFiles(true);
+      setVerifyResults(null);
+      setExpandedCheckName(null);
       fetchCommitFiles(repoId, selectedCommit.sha)
         .then((files) => {
           setCommitFiles(files || []);
@@ -37,6 +52,21 @@ export const CommitGraph: React.FC<Props> = ({ commits, repoName, repoId, onInsp
         });
     }
   }, [selectedCommit, repoId]);
+
+  const handleRunVerification = async () => {
+    if (!selectedCommit) return;
+    setVerifying(true);
+    setVerifyResults(null);
+    setExpandedCheckName(null);
+    try {
+      const data = await verifyCommit(repoId, selectedCommit.sha);
+      setVerifyResults(data);
+    } catch (err) {
+      console.error('Commit verification failed:', err);
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   const filteredCommits = useMemo(() => {
     return commits.filter(
@@ -292,6 +322,127 @@ export const CommitGraph: React.FC<Props> = ({ commits, repoName, repoId, onInsp
                   <span className="badge badge-amber" style={{ fontSize: '0.7rem' }}>{file.status}</span>
                 </div>
               ))
+            )}
+          </div>
+
+          {/* Verification (CI Runner Simulator) Section */}
+          <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h5 style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-heading)' }}>Commit Vetting Check</h5>
+              {verifyResults && (
+                <span className={`badge ${verifyResults.every(r => r.status !== 'failure') ? 'badge-emerald' : 'badge-rose'}`}>
+                  {verifyResults.every(r => r.status !== 'failure') ? 'ALL PASSED' : 'CHECKS FAILED'}
+                </span>
+              )}
+            </div>
+
+            {!verifyResults && !verifying && (
+              <button
+                onClick={handleRunVerification}
+                className="btn-primary"
+                style={{ width: '100%', justifyContent: 'center', padding: '9px' }}
+              >
+                <PlayIcon className="icon-sm" />
+                Run Code Verification
+              </button>
+            )}
+
+            {verifying && (
+              <div style={{
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-md)',
+                padding: '16px',
+                textAlign: 'center',
+                color: 'var(--text-muted)',
+                fontSize: '0.82rem',
+                fontFamily: 'var(--font-mono)',
+              }}>
+                <div className="animate-spin" style={{ width: '18px', height: '18px', border: '2px solid var(--accent-primary)', borderTopColor: 'transparent', borderRadius: '50%', margin: '0 auto 8px' }} />
+                Vetting commit state (checking out and running tests)...
+              </div>
+            )}
+
+            {verifyResults && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {verifyResults.map((res, rIdx) => {
+                  const isExpanded = expandedCheckName === res.name;
+                  return (
+                    <div
+                      key={rIdx}
+                      style={{
+                        background: 'var(--bg-tertiary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: '10px 12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {res.status === 'success' ? (
+                            <CheckCircleIcon className="icon-md" style={{ color: 'var(--accent-emerald)' }} />
+                          ) : res.status === 'failure' ? (
+                            <XCircleIcon className="icon-md" style={{ color: 'var(--accent-rose)' }} />
+                          ) : (
+                            <ExclamationTriangleIcon className="icon-md" style={{ color: 'var(--accent-amber)' }} />
+                          )}
+                          <span style={{ fontSize: '0.82rem', fontWeight: 650, color: 'var(--text-heading)' }}>
+                            {res.name}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => setExpandedCheckName(isExpanded ? null : res.name)}
+                          style={{
+                            border: 'none',
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            color: 'var(--text-subtle)',
+                            padding: '2px',
+                            display: 'flex',
+                            alignItems: 'center',
+                          }}
+                        >
+                          {isExpanded ? <ChevronUpIcon className="icon-sm" /> : <ChevronDownIcon className="icon-sm" />}
+                        </button>
+                      </div>
+
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-subtle)', paddingLeft: '24px' }}>
+                        {res.message}
+                      </div>
+
+                      {isExpanded && (
+                        <pre style={{
+                          marginTop: '6px',
+                          background: '#050505',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '10px',
+                          color: '#a3e635',
+                          fontSize: '0.72rem',
+                          fontFamily: 'var(--font-mono)',
+                          maxHeight: '180px',
+                          overflow: 'auto',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-all',
+                        }}>
+                          {res.output || 'No output log recorded.'}
+                        </pre>
+                      )}
+                    </div>
+                  );
+                })}
+
+                <button
+                  onClick={handleRunVerification}
+                  className="btn-secondary"
+                  style={{ width: '100%', justifyContent: 'center', fontSize: '0.78rem', marginTop: '4px' }}
+                >
+                  Re-run Checks
+                </button>
+              </div>
             )}
           </div>
         </div>

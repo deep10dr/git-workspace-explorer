@@ -1,4 +1,4 @@
-import { Repository, WorkspaceOverview, Branch, CommitSummary, Stash, SearchResult } from '../types';
+import { Repository, WorkspaceOverview, Branch, CommitSummary, Stash, SearchResult, VerifyResult } from '../types';
 
 const API_BASE = '/api';
 
@@ -76,5 +76,13 @@ export async function triggerScan(path?: string): Promise<{ status: string }> {
     body: JSON.stringify({ path }),
   });
   if (!res.ok) throw new Error('Failed to trigger scan');
+  return res.json();
+}
+
+export async function verifyCommit(repoId: string, sha: string): Promise<VerifyResult[]> {
+  const res = await fetch(`${API_BASE}/repositories/${repoId}/commits/${sha}/verify`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error('Failed to run commit verification checks');
   return res.json();
 }

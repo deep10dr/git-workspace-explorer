@@ -205,19 +205,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       {/* Bottom Actions */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
-        <button className="btn-secondary" onClick={toggleTheme} style={{ width: '100%', justifyContent: 'center', fontSize: '0.8rem', padding: '7px 12px' }}>
+      <div  className="flex  gap-2 mt-auto pt-4 ">
+        <button className="btn-secondary flex items-center gap-2 w-50% p-7px " onClick={toggleTheme} >
           {isDark ? <SunIcon className="icon-sm" /> : <MoonIcon className="icon-sm" />}
-          {isDark ? 'Light Mode' : 'Night Mode'}
         </button>
         <button
-          className="btn-secondary"
+          className="btn-secondary w-50% flex items-center gap-2 p-7px"
           onClick={onRefresh}
           disabled={isScanning}
-          style={{ width: '100%', justifyContent: 'center', fontSize: '0.8rem', padding: '7px 12px' }}
         >
           <ArrowPathIcon className={`icon-sm ${isScanning ? 'animate-spin' : ''}`} />
-          {isScanning ? 'Scanning…' : 'Refresh'}
         </button>
       </div>
     </aside>
