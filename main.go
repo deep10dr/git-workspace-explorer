@@ -51,6 +51,13 @@ func main() {
 		mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 
+			if strings.HasPrefix(r.URL.Path, "/api/") {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusNotFound)
+				w.Write([]byte(`{"error": "API route not found"}`))
+				return
+			}
+
 			f, errOpen := distSubFS.Open(filepath.Clean(strings.TrimPrefix(r.URL.Path, "/")))
 			if errOpen == nil {
 				f.Close()

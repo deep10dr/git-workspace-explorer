@@ -2,6 +2,22 @@ import { Repository, WorkspaceOverview, Branch, CommitSummary, Stash, SearchResu
 
 const API_BASE = '/api';
 
+export interface ToolInfo {
+  name: string;
+  category: string;
+  language: string;
+  isInstalled: boolean;
+  installCmd: string;
+  sizeEstimate: string;
+  description: string;
+}
+
+export async function fetchTools(): Promise<ToolInfo[]> {
+  const res = await fetch(`${API_BASE}/tools`);
+  if (!res.ok) throw new Error('Failed to fetch tools status');
+  return res.json();
+}
+
 export async function fetchOverview(): Promise<WorkspaceOverview> {
   const res = await fetch(`${API_BASE}/workspace/overview`);
   if (!res.ok) throw new Error('Failed to fetch workspace overview');

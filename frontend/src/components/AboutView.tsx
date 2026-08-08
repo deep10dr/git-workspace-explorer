@@ -8,9 +8,9 @@ interface AboutViewProps {
 
 export const AboutView: React.FC<AboutViewProps> = ({ totalRepos, workspacePath }) => {
   return (
-    <div style={{ maxWidth: '850px', margin: '0 auto', padding: '10px 0', display: 'flex', flexDirection: 'column', gap: '32px' }}>
-      {/* Page Header */}
-      <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '20px' }}>
+    <div style={{ maxWidth: '900px', margin: '0 auto', height: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column', gap: '20px', padding: '10px 0' }}>
+      {/* Fixed Page Header */}
+      <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div style={{
             background: 'var(--accent-primary)',
@@ -28,6 +28,9 @@ export const AboutView: React.FC<AboutViewProps> = ({ totalRepos, workspacePath 
           </div>
         </div>
       </div>
+
+      {/* Scrollable Overflow Documentation Body */}
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '28px', paddingRight: '4px' }}>
 
       {/* Description Section */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -85,5 +88,6 @@ export const AboutView: React.FC<AboutViewProps> = ({ totalRepos, workspacePath 
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 };

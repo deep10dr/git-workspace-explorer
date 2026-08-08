@@ -136,7 +136,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div  className="flex h-100vh w-full overflow-hidden">
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: 'var(--bg-primary)' }}>
       {/* Sidebar Navigation */}
       <Sidebar
         currentTab={currentTab}
@@ -150,8 +150,8 @@ export const App: React.FC = () => {
         openPreviewsCount={diffTabs.length}
       />
 
-      {/* Main Content View */}
-      <main style={{ flex: 1, padding: '24px 32px', overflowY: 'auto', background: 'var(--bg-primary)' }}>
+      {/* Main Content Area (Scrollable Viewport) */}
+      <main style={{ flex: 1, height: '100vh', overflowY: 'auto', overflowX: 'hidden', padding: '24px 32px' }}>
 
         {/* Settings & About Views */}
         {currentTab === 'settings' && (
@@ -214,16 +214,16 @@ export const App: React.FC = () => {
 
         {/* 2. Repositories Tab (Master-Detail Table List View) */}
         {!selectedRepo && currentTab === 'repositories' && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <div style={{ height: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-heading)' }}>Repositories List</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', margin: 0 }}>Click any repository row below to inspect its commit graph, branches, and status.</p>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-heading)', margin: 0 }}>Repositories List</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', margin: 0, marginTop: '4px' }}>Click any repository row below to inspect its commit graph, branches, and status.</p>
               </div>
               <span className="badge badge-indigo">{filteredRepos.length} Repositories</span>
             </div>
 
-            <div className="glass-panel" style={{ overflow: 'hidden', padding: 0 }}>
+            <div className="glass-panel" style={{ flex: 1, overflowY: 'auto', padding: 0, border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                 <thead>
                   <tr style={{ background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-subtle)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.06em' }}>

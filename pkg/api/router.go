@@ -73,12 +73,108 @@ func (s *Server) RefreshWorkspace() {
 	}
 }
 
+type ToolInfo struct {
+	Name         string `json:"name"`
+	Category     string `json:"category"`
+	Language     string `json:"language"`
+	IsInstalled  bool   `json:"isInstalled"`
+	InstallCmd   string `json:"installCmd"`
+	SizeEstimate string `json:"sizeEstimate"`
+	Description  string `json:"description"`
+}
+
 func (s *Server) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("/api/overview", s.handleOverview)
 	mux.HandleFunc("/api/workspace/overview", s.handleOverview)
 	mux.HandleFunc("/api/repositories", s.handleRepositories)
 	mux.HandleFunc("/api/repositories/", s.handleRepositoryDetail)
 	mux.HandleFunc("/api/search", s.handleSearch)
 	mux.HandleFunc("/api/scan", s.handleScan)
+	mux.HandleFunc("/api/tools", s.handleTools)
+}
+
+func (s *Server) handleTools(w http.ResponseWriter, r *http.Request) {
+	tools := []ToolInfo{
+		{
+			Name:         "golangci-lint",
+			Category:     "Linter",
+			Language:     "Go",
+			IsInstalled:  toolInstalled("golangci-lint"),
+			InstallCmd:   "brew install golangci-lint",
+			SizeEstimate: "~40–50 MB",
+			Description:  "Fast Go linter aggregator running staticcheck, errcheck, and govets.",
+		},
+		{
+			Name:         "gofmt",
+			Category:     "Formatter",
+			Language:     "Go",
+			IsInstalled:  toolInstalled("gofmt"),
+			InstallCmd:   "Built into Go (no separate install)",
+			SizeEstimate: "0 MB (included)",
+			Description:  "Official Go source code formatter.",
+		},
+		{
+			Name:         "pytest",
+			Category:     "Testing",
+			Language:     "Python",
+			IsInstalled:  toolInstalled("pytest"),
+			InstallCmd:   "pip install pytest",
+			SizeEstimate: "~5 MB",
+			Description:  "Full-featured Python testing framework.",
+		},
+		{
+			Name:         "mypy",
+			Category:     "Type Checking",
+			Language:     "Python",
+			IsInstalled:  toolInstalled("mypy"),
+			InstallCmd:   "pip install mypy",
+			SizeEstimate: "~15–20 MB",
+			Description:  "Optional static type checker for Python.",
+		},
+		{
+			Name:         "ruff",
+			Category:     "Linter",
+			Language:     "Python",
+			IsInstalled:  toolInstalled("ruff"),
+			InstallCmd:   "pip install ruff",
+			SizeEstimate: "~10 MB",
+			Description:  "Extremely fast Python linter written in Rust.",
+		},
+		{
+			Name:         "prettier",
+			Category:     "Formatter",
+			Language:     "JS/TS/JSON/YAML",
+			IsInstalled:  toolInstalled("prettier"),
+			InstallCmd:   "npm install --save-dev prettier",
+			SizeEstimate: "~15–20 MB",
+			Description:  "Opinionated code formatter for JavaScript, TypeScript, JSON, and YAML.",
+		},
+		{
+			Name:         "gitleaks",
+			Category:     "Secret Scanning",
+			Language:     "Global / YAML / Config",
+			IsInstalled:  toolInstalled("gitleaks"),
+			InstallCmd:   "brew install gitleaks",
+			SizeEstimate: "~10–15 MB",
+			Description:  "Detects hardcoded secrets, API keys, and tokens in repositories.",
+		},
+		{
+			Name:         "trufflehog",
+			Category:     "Secret Scanning",
+			Language:     "Global / YAML / Config",
+			IsInstalled:  toolInstalled("trufflehog"),
+			InstallCmd:   "brew install trufflehog",
+			SizeEstimate: "~30–40 MB",
+			Description:  "High-entropy secret scanner for credentials in git commits.",
+		},
+	}
+
+	jsonResponse(w, tools)
+}
+
+func toolInstalled(name string) bool {
+	_, err := exec.LookPath(name)
+	return err == nil
 }
 
 func (s *Server) handleOverview(w http.ResponseWriter, r *http.Request) {
@@ -289,28 +385,26 @@ func (s *Server) verifyCommit(repoPath, sha string) ([]VerifyResult, error) {
 		origBranch = "main" // default
 	}
 
-	// 2. Check if working tree is dirty
+	// 2. Check if working tree is dirty & checkout SHA if different from current branch
 	statusCmd := exec.Command("git", "status", "--porcelain")
 	statusCmd.Dir = repoPath
 	statusOut, _ := statusCmd.Output()
 	isDirty := len(strings.TrimSpace(string(statusOut))) > 0
 
-	// 3. Stash changes if dirty
-	if isDirty {
-		// Temporary stash
-		exec.Command("git", "stash", "--include-untracked").Run( )
-	}
+	shouldCheckout := sha != "" && sha != "HEAD" && sha != origBranch
 
-	// 4. Checkout selected commit SHA
-	exec.Command("git", "checkout", sha).Run()
-
-	// Defer branch restoration and popping stash
-	defer func() {
-		exec.Command("git", "checkout", origBranch).Run()
+	if shouldCheckout {
 		if isDirty {
-			exec.Command("git", "stash", "pop").Run()
+			exec.Command("git", "stash", "--include-untracked").Run()
 		}
-	}()
+		exec.Command("git", "checkout", sha).Run()
+		defer func() {
+			exec.Command("git", "checkout", origBranch).Run()
+			if isDirty {
+				exec.Command("git", "stash", "pop").Run()
+			}
+		}()
+	}
 
 	var results []VerifyResult
 

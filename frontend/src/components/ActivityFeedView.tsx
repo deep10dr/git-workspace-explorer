@@ -71,23 +71,23 @@ export const ActivityFeedView: React.FC<ActivityFeedViewProps> = ({ repositories
   events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '10px 0', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Page Header */}
-      <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div style={{ maxWidth: '900px', margin: '0 auto', height: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column', gap: '20px', padding: '10px 0' }}>
+      {/* Fixed Page Header */}
+      <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Clock size={24} style={{ color: 'var(--accent-primary)' }} />
             <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-heading)', margin: 0 }}>Activity Feed</h2>
           </div>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-subtle)', marginTop: '6px', margin: 0 }}>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-subtle)', marginTop: '4px', margin: 0 }}>
             Chronological log of commits, working tree changes, and stashes across all workspace projects.
           </p>
         </div>
         <span className="badge badge-indigo">{events.length} Events</span>
       </div>
 
-      {/* Clean Timeline Stream */}
-      <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', background: 'var(--bg-secondary)', overflow: 'hidden' }}>
+      {/* Scrollable Overflow Timeline Stream */}
+      <div style={{ flex: 1, overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', background: 'var(--bg-secondary)' }}>
         {events.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-subtle)', fontSize: '0.88rem' }}>
             No recent activity events recorded.
