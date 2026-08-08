@@ -86,3 +86,9 @@ export async function verifyCommit(repoId: string, sha: string): Promise<VerifyR
   if (!res.ok) throw new Error('Failed to run commit verification checks');
   return res.json();
 }
+
+export async function fetchReadme(repoId: string): Promise<{ exists: boolean; content: string }> {
+  const res = await fetch(`${API_BASE}/repositories/${repoId}/readme`);
+  if (!res.ok) return { exists: false, content: '' };
+  return res.json();
+}

@@ -9,12 +9,18 @@ import { WorkingTree } from './components/WorkingTree';
 import { FileDiffViewer } from './components/FileDiffViewer';
 import { GlobalSearchModal } from './components/GlobalSearchModal';
 import { DiffPreviewer, DiffTab } from './components/DiffPreviewer';
+import { SettingsView } from './components/SettingsView';
+import { AboutView } from './components/AboutView';
+import { ActivityFeedView } from './components/ActivityFeedView';
+import { RepoOverview } from './components/RepoOverview';
+import { TestRunnerView } from './components/TestRunnerView';
 import { fetchOverview, fetchRepositories, fetchBranches, fetchCommits, fetchStashes, triggerScan } from './services/api';
 import { Repository, WorkspaceOverview, Branch, CommitSummary, Stash, SearchResult } from './types';
-import { FolderGit2, Search, AlertTriangle, ShieldCheck, FileEdit, RefreshCw, FolderPlus, ArrowLeft } from 'lucide-react';
+import { FolderGit2, Search, AlertTriangle, ShieldCheck, FileEdit, RefreshCw, FolderPlus, ArrowLeft, LayoutList, Grid, GitBranch, ChevronRight } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [overview, setOverview] = useState<WorkspaceOverview | null>(null);
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
@@ -146,94 +152,148 @@ export const App: React.FC = () => {
 
       {/* Main Content View */}
       <main style={{ flex: 1, padding: '24px 32px', overflowY: 'auto', background: 'var(--bg-primary)' }}>
-        {/* Workspace Header & Paste Workspace Folder Bar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', gap: '16px' }}>
-          <div>
-            <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-heading)' }}>
-              {selectedRepo ? selectedRepo.name : 'Local Git Workspace'}
-            </h2>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-subtle)' }}>
-              {selectedRepo ? selectedRepo.path : `Monitoring ${repositories.length} local repositories`}
-            </span>
-          </div>
 
-          {!selectedRepo && (
-            <form onSubmit={handleScanPath} style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, maxWidth: '500px' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <FolderPlus size={16} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--accent-primary)' }} />
-                <input
-                  type="text"
-                  placeholder="Paste workspace folder path (e.g. /Users/deepak/Projects)..."
-                  value={workspaceInputPath}
-                  onChange={(e) => setWorkspaceInputPath(e.target.value)}
-                  style={{
-                    width: '100%',
-                    background: 'var(--bg-input)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '8px 12px 8px 34px',
-                    color: 'var(--text-main)',
-                    fontSize: '0.82rem',
-                    fontFamily: 'var(--font-mono)',
-                  }}
-                />
+        {/* Settings & About Views */}
+        {currentTab === 'settings' && (
+          <SettingsView
+            workspacePath={workspaceInputPath}
+            onUpdatePath={async (newPath) => {
+              setWorkspaceInputPath(newPath);
+              setIsScanning(true);
+              await triggerScan(newPath);
+              await loadData();
+              setIsScanning(false);
+            }}
+            isScanning={isScanning}
+            totalRepos={repositories.length}
+          />
+        )}
+
+        {currentTab === 'about' && (
+          <AboutView
+            totalRepos={repositories.length}
+            workspacePath={workspaceInputPath}
+          />
+        )}
+
+        {currentTab === 'activity' && (
+          <ActivityFeedView
+            repositories={repositories}
+            onSelectRepo={(r) => {
+              setSelectedRepo(r);
+              setCurrentTab('overview');
+            }}
+          />
+        )}
+
+        {/* 1. Dashboard Tab View */}
+        {!selectedRepo && currentTab === 'dashboard' && (
+          <>
+            {overview && <WorkspaceStats overview={overview} />}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-heading)' }}>Workspace Repositories Overview</h3>
+                <span className="badge badge-indigo">{filteredRepos.length} Repositories</span>
               </div>
-              <button type="submit" className="btn-primary" disabled={isScanning} style={{ padding: '8px 14px', fontSize: '0.85rem' }}>
-                <RefreshCw size={14} className={isScanning ? 'animate-spin' : ''} />
-                Scan Folder
-              </button>
-            </form>
-          )}
 
-          {/* Quick Filter Input */}
-          {!selectedRepo && (
-            <div style={{ position: 'relative', width: '220px' }}>
-              <Search size={16} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-subtle)' }} />
-              <input
-                type="text"
-                placeholder="Filter repositories..."
-                value={filterQuery}
-                onChange={(e) => setFilterQuery(e.target.value)}
-                style={{
-                  width: '100%',
-                  background: 'var(--bg-input)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '8px 12px 8px 34px',
-                  color: 'var(--text-main)',
-                  fontSize: '0.82rem',
-                }}
-              />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+                {filteredRepos.map((repo) => (
+                  <RepoCard
+                    key={repo.id}
+                    repo={repo}
+                    onSelect={(r) => {
+                      setSelectedRepo(r);
+                      setCurrentTab('overview');
+                    }}
+                  />
+                ))}
+              </div>
             </div>
-          )}
-        </div>
+          </>
+        )}
 
-        {/* Level 1: Global Workspace Dashboard */}
-        {!selectedRepo && overview && <WorkspaceStats overview={overview} />}
-
-        {!selectedRepo ? (
+        {/* 2. Repositories Tab (Master-Detail Table List View) */}
+        {!selectedRepo && currentTab === 'repositories' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Discovered Repositories</h3>
+              <div>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-heading)' }}>Repositories List</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', margin: 0 }}>Click any repository row below to inspect its commit graph, branches, and status.</p>
+              </div>
               <span className="badge badge-indigo">{filteredRepos.length} Repositories</span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-              {filteredRepos.map((repo) => (
-                <RepoCard
-                  key={repo.id}
-                  repo={repo}
-                  onSelect={(r) => {
-                    setSelectedRepo(r);
-                    setCurrentTab('graph');
-                  }}
-                />
-              ))}
+            <div className="glass-panel" style={{ overflow: 'hidden', padding: 0 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-subtle)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.06em' }}>
+                    <th style={{ padding: '12px 16px' }}>Repository Name</th>
+                    <th style={{ padding: '12px 16px' }}>Branch</th>
+                    <th style={{ padding: '12px 16px' }}>Status</th>
+                    <th style={{ padding: '12px 16px' }}>Health</th>
+                    <th style={{ padding: '12px 16px' }}>Last Commit</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'right' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRepos.map((repo) => (
+                    <tr
+                      key={repo.id}
+                      onClick={() => {
+                        setSelectedRepo(repo);
+                        setCurrentTab('overview');
+                      }}
+                      style={{
+                        borderBottom: '1px solid var(--border-color)',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s ease',
+                      }}
+                      className="table-row-hover"
+                    >
+                      <td style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--text-heading)' }}>
+                        {repo.name}
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-subtle)', fontFamily: 'var(--font-mono)', fontWeight: 400, marginTop: '2px' }}>
+                          {repo.path}
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 16px', color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <GitBranch size={13} /> {repo.currentBranch}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span className={`badge ${repo.status.isClean ? 'badge-emerald' : 'badge-amber'}`}>
+                          {repo.status.isClean ? 'Clean' : `${repo.status.totalChanges} changes`}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span className={`badge ${repo.health.status === 'healthy' ? 'badge-emerald' : 'badge-amber'}`}>
+                          {repo.health.score}/100 ({repo.health.status})
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                        {repo.lastCommit ? repo.lastCommit.message : 'No commits'}
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                        <ChevronRight size={16} style={{ color: 'var(--text-subtle)' }} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-        ) : (
-          /* Level 2: Repository Detail Workspace View */
+        )}
+
+        {/* Level 2: Repository Detail Workspace View */}
+        {selectedRepo && currentTab !== 'settings' && currentTab !== 'about' && (
           <div>
+            {currentTab === 'overview' && (
+              <RepoOverview repo={selectedRepo} />
+            )}
+            {currentTab === 'testing' && (
+              <TestRunnerView repoId={selectedRepo.id} repoName={selectedRepo.name} headSha={selectedRepo.headSha} />
+            )}
             {currentTab === 'graph' && (
               <CommitGraph commits={commits} repoName={selectedRepo.name} repoId={selectedRepo.id} onInspectFileDiff={handleInspectFileDiff} />
             )}

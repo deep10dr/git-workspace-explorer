@@ -1,3 +1,10 @@
+export interface LanguageStat {
+  name: string;
+  color: string;
+  percentage: number;
+  bytes: number;
+}
+
 export interface Repository {
   id: string;
   name: string;
@@ -12,6 +19,7 @@ export interface Repository {
   behindCount: number;
   lastActivity: string;
   health: HealthReport;
+  languages?: LanguageStat[];
 }
 
 export interface CommitSummary {
