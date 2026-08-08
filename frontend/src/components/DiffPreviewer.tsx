@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { fetchCommitFileDiff, fetchStashFileDiff } from '../services/api';
-import { XMarkIcon, DocumentIcon } from '@heroicons/react/24/outline';
+import { X, FileText } from 'lucide-react';
 
 export interface DiffTab {
   repoId: string;
@@ -54,7 +54,7 @@ export const DiffPreviewer: React.FC<Props> = ({
   if (tabs.length === 0) {
     return (
       <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-subtle)' }}>
-        <DocumentIcon className="icon-lg" style={{ margin: '0 auto 12px', opacity: 0.6 }} />
+        <FileText size={24} style={{ margin: '0 auto 12px', opacity: 0.6 }} />
         <p>No preview tabs open. Click a file in Commit or Stash details to inspect.</p>
       </div>
     );
@@ -126,7 +126,7 @@ export const DiffPreviewer: React.FC<Props> = ({
                 }}
                 className="btn-secondary-hover"
               >
-                <XMarkIcon style={{ width: '13px', height: '13px' }} />
+                <X size={13} />
               </button>
             </div>
           );

@@ -3,14 +3,16 @@ import { CommitSummary, VerifyResult } from '../types';
 import { fetchCommitFiles, verifyCommit } from '../services/api';
 import { ReactFlow, Background, Controls, Node, Edge, Position, MarkerType, useNodesState, useEdgesState } from '@xyflow/react';
 import { 
-  PlayIcon, 
-  CheckCircleIcon, 
-  XCircleIcon, 
-  ExclamationTriangleIcon,
-  ChevronDownIcon,
-  ChevronUpIcon
-} from '@heroicons/react/24/outline';
-import { Search, FileCode, X } from 'lucide-react';
+  Play, 
+  CheckCircle2, 
+  XCircle, 
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Search, 
+  FileCode, 
+  X 
+} from 'lucide-react';
 import '@xyflow/react/dist/style.css';
 
 interface Props {
@@ -342,7 +344,7 @@ export const CommitGraph: React.FC<Props> = ({ commits, repoName, repoId, onInsp
                 className="btn-primary"
                 style={{ width: '100%', justifyContent: 'center', padding: '9px' }}
               >
-                <PlayIcon className="icon-sm" />
+                <Play size={16} />
                 Run Code Verification
               </button>
             )}
@@ -383,11 +385,11 @@ export const CommitGraph: React.FC<Props> = ({ commits, repoName, repoId, onInsp
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           {res.status === 'success' ? (
-                            <CheckCircleIcon className="icon-md" style={{ color: 'var(--accent-emerald)' }} />
+                            <CheckCircle2 size={18} style={{ color: 'var(--accent-emerald)' }} />
                           ) : res.status === 'failure' ? (
-                            <XCircleIcon className="icon-md" style={{ color: 'var(--accent-rose)' }} />
+                            <XCircle size={18} style={{ color: 'var(--accent-rose)' }} />
                           ) : (
-                            <ExclamationTriangleIcon className="icon-md" style={{ color: 'var(--accent-amber)' }} />
+                            <AlertTriangle size={18} style={{ color: 'var(--accent-amber)' }} />
                           )}
                           <span style={{ fontSize: '0.82rem', fontWeight: 650, color: 'var(--text-heading)' }}>
                             {res.name}
@@ -405,7 +407,7 @@ export const CommitGraph: React.FC<Props> = ({ commits, repoName, repoId, onInsp
                             alignItems: 'center',
                           }}
                         >
-                          {isExpanded ? <ChevronUpIcon className="icon-sm" /> : <ChevronDownIcon className="icon-sm" />}
+                          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         </button>
                       </div>
 
